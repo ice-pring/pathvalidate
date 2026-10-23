@@ -224,9 +224,9 @@ class BaseValidator(AbstractValidator):
         for name in (root_name, base_name):
             if self._is_reserved_keyword(name):
                 raise ReservedNameError(
-                    f"'{root_name}' is a reserved name",
+                    f"'{name}' is a reserved name",
                     reusable_name=False,
-                    reserved_name=root_name,
+                    reserved_name=name,
                     platform=self.platform,
                 )
 

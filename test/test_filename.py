@@ -412,6 +412,23 @@ class Test_validate_filename:
     def test_normal_additional_reserved_names(self, value, arn, expected):
         assert is_valid_filename(value, additional_reserved_names=arn) == expected
 
+    @pytest.mark.parametrize("platform", ["windows", "universal", "linux"])
+    @pytest.mark.parametrize(
+        ["value", "reserved", "expected"],
+        [
+            [".env", ".env", ".env"],
+            [".GitIgnore", ".gitignore", ".GitIgnore"],
+            ["config.json", "config.json", "config.json"],
+            ["archive.tar.gz", "archive.tar.gz", "archive.tar.gz"],
+            ["config.json", "config", "config"],
+        ],
+    )
+    def test_matched_custom_reserved_name(self, platform, value, reserved, expected):
+        with pytest.raises(ValidationError) as exc:
+            validate_filename(value, platform=platform, additional_reserved_names=[reserved])
+        assert exc.value.reason == ErrorReason.RESERVED_NAME
+        assert exc.value.reserved_name == expected
+
     @pytest.mark.parametrize(
         ["platform", "value", "expected", "reason"],
         [
@@ -708,6 +725,45 @@ class Test_sanitize_filename:
                 )
                 == expected
             ), platform
+
+    @pytest.mark.parametrize("platform", ["windows", "universal", "linux"])
+    @pytest.mark.parametrize("value", [".env", ".gitignore", "config.json"])
+    @pytest.mark.parametrize(
+        ["handler", "prefix", "suffix"],
+        [
+            [ReservedNameHandler.add_trailing_underscore, "", "_"],
+            [ReservedNameHandler.add_leading_underscore, "_", ""],
+            [ReservedNameHandler.as_is, "", ""],
+        ],
+    )
+    def test_matched_custom_reserved_name(self, platform, value, handler, prefix, suffix):
+        assert (
+            sanitize_filename(
+                value,
+                platform=platform,
+                additional_reserved_names=[value],
+                reserved_name_handler=handler,
+            )
+            == prefix + value + suffix
+        )
+
+    def test_custom_handler_receives_complete_reserved_name(self):
+        names = []
+
+        def replace_name(error: ValidationError) -> str:
+            names.append(error.reserved_name)
+            return "settings"
+
+        assert (
+            sanitize_filename(
+                ".env",
+                additional_reserved_names=[".env"],
+                reserved_name_handler=replace_name,
+                validate_after_sanitize=True,
+            )
+            == "settings"
+        )
+        assert names == [".env"]
 
     @pytest.mark.parametrize(
         ["value", "check_reserved", "expected"],

@@ -579,6 +579,25 @@ class Test_validate_win_file_path:
 
 
 class Test_sanitize_filepath:
+    @pytest.mark.parametrize(
+        ["platform", "value", "expected"],
+        [
+            ["linux", "secrets/.env", "secrets/.env_"],
+            ["universal", "secrets/.env", "secrets/.env_"],
+            ["windows", "secrets\\.env", "secrets\\.env_"],
+        ],
+    )
+    def test_matched_custom_reserved_name(self, platform, value, expected):
+        assert (
+            sanitize_filepath(
+                value,
+                platform=platform,
+                additional_reserved_names=[".env"],
+                validate_after_sanitize=True,
+            )
+            == expected
+        )
+
     SANITIZE_CHARS = INVALID_WIN_PATH_CHARS + unprintable_ascii_chars
     NOT_SANITIZE_CHARS = VALID_PATH_CHARS
     REPLACE_TEXTS = ["", "_"]
